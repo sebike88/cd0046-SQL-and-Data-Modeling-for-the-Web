@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort, jsonify
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -13,9 +13,9 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
+import sys
 
-from models import setup_db, db
-
+from models import setup_db, db, Artist
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -210,18 +210,10 @@ def delete_venue(venue_id):
 #  ----------------------------------------------------------------
 @app.route('/artists')
 def artists():
-  # TODO: replace with real data returned from querying the database
-  data=[{
-    "id": 4,
-    "name": "Guns N Petals",
-  }, {
-    "id": 5,
-    "name": "Matt Quevedo",
-  }, {
-    "id": 6,
-    "name": "The Wild Sax Band",
-  }]
-  return render_template('pages/artists.html', artists=data)
+  artists = Artist.query.order_by(Artist.id).all()
+  formatted_response = [artist.__dict__ for artist in artists]
+  
+  return render_template('pages/artists.html', artists=formatted_response)
 
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
@@ -380,6 +372,65 @@ def create_artist_form():
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
+  error = False
+
+  try:
+    form = ArtistForm()
+    data = request.form
+    name = data['name']
+    city = data['city']
+    state = data['state']
+    phone = data['phone']
+    genres = data.getlist('genres')
+    facebook_link = data['facebook_link']
+    image_link = data['image_link']
+    website_link = data['website_link']
+    seeking_venue_form=data['seeking_venue']
+    seeking_venue = seeking_venue_form == 'y'
+    seeking_description=data['seeking_description']
+
+    artist = Artist(name=name,
+      city=city,
+      state=state,
+      phone=phone,
+      genres=genres,
+      facebook_link=facebook_link,
+      image_link=image_link,
+      website_link=website_link,
+      seeking_venue=seeking_venue,
+      seeking_description=seeking_description
+    )
+
+    db.session.add(artist)
+    db.session.commit()
+  except:
+    error = True
+    db.session.rollback()
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+
+  if error:
+    abort(400)
+  else:
+    return render_template('forms/new_artist.html', form=form)
+    # return jsonify({
+    #   'name': name,
+    #   'city': city,
+    #   'state': state,
+    #   'phone': phone,
+    #   'genres': genres,
+    #   'facebook_link': facebook_link,
+    #   'image_link': image_link,
+    #   'website_link': website_link,
+    #   'seeking_venue': seeking_venue,
+    #   'seeking_description': seeking_description
+    # })
+  
+
+  # print(data)
+  # print(data['name'])
+  # artist = Artist()
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
