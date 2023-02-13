@@ -58,7 +58,9 @@ def get_venue_by_city(venues, city):
 
 @app.route('/')
 def index():
-  return render_template('pages/home.html')
+  artists = db.session.query(Artist).order_by(Artist.id.desc()).limit(10).all()
+  venues = db.session.query(Venue).order_by(Venue.id.desc()).limit(10).all()
+  return render_template('pages/home.html', artists=artists, venues=venues)
 
 
 #  Venues
@@ -76,27 +78,6 @@ def venues():
     'venues': get_venue_by_city(venues, city[0])
   } for city in cities]
 
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
   return render_template('pages/venues.html', areas=formatted_venues);
 
 @app.route('/venues/search', methods=['POST'])
